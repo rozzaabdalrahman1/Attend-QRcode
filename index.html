@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>سجل الحضور</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Zain:wght@500;600;700&display=swap');
+    :root {
+      --paper:#f7f0df; --paper2:#fffaf0; --ink:#332d27; --muted:#776d62;
+      --line:#ded1ba; --accent:#7b563c; --accent2:#a77952; --danger:#a94442;
+      --ok:#427052; --shadow:0 12px 30px rgba(72,51,33,.10);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,.75), transparent 25%),
+      linear-gradient(135deg,#efe5cf,#f9f3e5 45%,#eadcc4);
+      font-family:"IBM Plex Sans Arabic",sans-serif; min-height:100vh; }
+    .shell { width:min(1180px,94%); margin:0 auto; padding:24px 0 48px; }
+    header { background:rgba(255,250,240,.88); border:1px solid var(--line); box-shadow:var(--shadow);
+      padding:24px; border-radius:22px; margin-bottom:18px; }
+    h1,h2,h3 { font-family:"Zain",sans-serif; margin:0; }
+    h1 { font-size:42px; line-height:1; }
+    .subtitle { color:var(--muted); margin-top:8px; }
+    nav { display:flex; gap:8px; flex-wrap:wrap; margin-top:20px; }
+    nav button { border:1px solid var(--line); background:#fffaf0; color:var(--ink); padding:10px 16px;
+      border-radius:999px; cursor:pointer; font:inherit; }
+    nav button.active, .primary { background:var(--accent); color:white; border-color:var(--accent); }
+    main section { display:none; }
+    main section.active { display:block; }
+    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; }
+    .card { grid-column:span 12; background:rgba(255,250,240,.92); border:1px solid var(--line);
+      border-radius:20px; padding:20px; box-shadow:var(--shadow); }
+    .half { grid-column:span 6; }
+    .third { grid-column:span 4; }
+    @media(max-width:760px){ .half,.third{grid-column:span 12} h1{font-size:34px} }
+    label { display:block; font-weight:600; margin-bottom:6px; }
+    input,select { width:100%; padding:12px 13px; border:1px solid var(--line); background:#fffdf7;
+      border-radius:12px; font:inherit; color:var(--ink); }
+    button { font:inherit; }
+    .btn { border:0; border-radius:12px; padding:11px 15px; cursor:pointer; }
+    .secondary { background:#eee2cf; color:var(--ink); }
+    .danger { background:#f3d9d5; color:var(--danger); }
+    .whatsapp { background:#dfeee2; color:#28563a; }
+    .row { display:flex; gap:10px; align-items:end; flex-wrap:wrap; }
+    .grow { flex:1 1 180px; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+    @media(max-width:600px){.stats{grid-template-columns:1fr}}
+    .stat { padding:16px; border:1px dashed var(--line); border-radius:16px; background:#fffaf0; }
+    .stat b { font-size:28px; display:block; }
+    table { width:100%; border-collapse:collapse; margin-top:14px; }
+    th,td { padding:11px 8px; border-bottom:1px solid var(--line); text-align:right; vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    .empty { padding:24px; text-align:center; color:var(--muted); }
+    .notice { padding:12px 14px; border-radius:12px; background:#eee2cf; margin-top:12px; }
+    .notice.ok { background:#dfeee2; color:#28563a; }
+    .notice.error { background:#f4d9d5; color:#7e2926; }
+    .pill { display:inline-block; border-radius:999px; padding:4px 9px; font-size:12px; background:#eee2cf; }
+    .pill.sent { background:#dfeee2; color:#28563a; }
+    .pill.failed { background:#f4d9d5; color:#7e2926; }
+    .pill.pending { background:#f0e8c9; color:#6e5a17; }
+    .attendance-box { display:grid; grid-template-columns:1fr 1.4fr; gap:14px; align-items:end; }
+    @media(max-width:700px){.attendance-box{grid-template-columns:1fr}}
+    .big-input { font-size:28px; text-align:center; padding:16px; }
+    .list-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    a.download { display:inline-block; margin-top:10px; color:var(--accent); font-weight:700; }
+    footer { text-align:center; color:var(--muted); margin-top:20px; font-size:13px; }
+  </style>
+</head>
+<body>
+<div id="loginOverlay" style="position:fixed;inset:0;background:linear-gradient(135deg,#efe5cf,#f9f3e5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:99">
+  <div class="card" style="width:min(440px,100%);text-align:center">
+    <h1 style="font-size:38px">سجل الحضور</h1>
+    <p style="color:var(--muted)">تسجيل دخول المعلم</p>
+    <div style="text-align:right;margin-top:20px"><label>رقم هاتف المعلم</label><input id="teacherPhone" type="tel" inputmode="tel" placeholder="مثال: 01012345678"></div>
+    <button class="btn primary" id="loginBtn" style="width:100%;margin-top:14px">دخول</button>
+    <div id="loginMsg"></div>
+  </div>
+</div>
+<div class="shell" id="appShell" style="display:none">
+  <header>
+    <h1>سجل الحضور</h1>
+    <div class="subtitle">دفتر حضور رقمي بسيط — مجموعات، طلاب، حضور يومي وتقارير شهرية.</div>
+    <nav id="tabs">
+      <button data-tab="groups" class="active">المجموعات</button>
+      <button data-tab="students">الطلاب</button>
+      <button data-tab="attendance">تسجيل الحضور</button>
+      <button data-tab="history">السجل</button>
+      <button data-tab="reports">التقارير الشهرية</button>
+    </nav>
+    <div style="display:flex;justify-content:flex-start;margin-top:12px">
+      <button class="btn secondary" id="logoutBtn">تسجيل الخروج</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="groups" class="active">
+      <div class="grid">
+        <div class="card half">
+          <h2>إضافة مجموعة</h2>
+          <div class="row" style="margin-top:14px">
+            <div class="grow"><label for="groupName">اسم المجموعة</label><input id="groupName" placeholder="مثال: مجموعة أ"></div>
+            <button class="btn primary" id="addGroupBtn">إضافة</button>
+          </div>
+          <div id="groupMsg"></div>
+        </div>
+        <div class="card half">
+          <h2>المجموعات الحالية</h2>
+          <div id="groupsTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="students">
+      <div class="grid">
+        <div class="card">
+          <h2>إضافة طالب</h2>
+          <div class="row" style="margin-top:14px">
+            <div class="grow"><label>المجموعة</label><select id="studentGroup"></select></div>
+            <div class="grow"><label>رقم الطالب داخل المجموعة</label><input id="studentNumber" type="number" min="1"></div>
+            <div class="grow"><label>اسم الطالب</label><input id="studentName"></div>
+            <div class="grow"><label>رقم ولي الأمر</label><input id="parentPhone" placeholder="+2010..."></div>
+            <button class="btn primary" id="addStudentBtn">إضافة الطالب</button>
+          </div>
+          <div id="studentMsg"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <h2>قائمة الطلاب</h2>
+            <div class="grow" style="max-width:280px"><select id="studentFilter"></select></div>
+          </div>
+          <div id="studentsTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="attendance">
+      <div class="grid">
+        <div class="card">
+          <h2>تسجيل الحضور</h2>
+          <div class="attendance-box" style="margin-top:16px">
+            <div>
+              <label>المجموعة</label>
+              <select id="attendanceGroup"></select>
+            </div>
+            <div>
+              <label>رقم الطالب ثم Enter</label>
+              <input id="attendanceNumber" class="big-input" type="number" min="1" autocomplete="off" placeholder="مثال: 12">
+            </div>
+          </div>
+          <div id="attendanceMsg"></div>
+        </div>
+        <div class="card">
+          <div class="stats">
+            <div class="stat"><span>التاريخ</span><b id="todayLabel">—</b></div>
+            <div class="stat"><span>حضور اليوم</span><b id="todayCount">0</b></div>
+            <div class="stat"><span>المجموعة المختارة</span><b id="selectedGroupCount">0</b></div>
+          </div>
+          <h2>حضور اليوم</h2>
+          <div id="todayTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="history">
+      <div class="grid">
+        <div class="card">
+          <div class="row">
+            <div class="grow"><label>المجموعة</label><select id="historyGroup"></select></div>
+            <div class="grow"><label>التاريخ</label><input id="historyDate" type="date"></div>
+            <button class="btn primary" id="loadHistoryBtn">عرض السجل</button>
+          </div>
+          <div id="historyTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="reports">
+      <div class="grid">
+        <div class="card half">
+          <h2>توليد تقرير</h2>
+          <p style="color:var(--muted)">اختر أي شهر لتوليد ملف CSV قابل للفتح في Excel.</p>
+          <div class="row">
+            <div class="grow"><label>الشهر</label><input id="reportMonth" type="month"></div>
+            <button class="btn primary" id="generateReportBtn">توليد التقرير</button>
+          </div>
+          <div id="reportMsg"></div>
+        </div>
+        <div class="card half">
+          <h2>التقارير المحفوظة</h2>
+          <div id="reportsTable"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>سجل الحضور — حضور يدوي + WhatsApp Web</footer>
+</div>
+
+<script>
+  // Supabase public configuration. The anon key is intentionally client-side.
+  const SUPABASE_URL = "https://qbsetixizzzmlmnkaqce.supabase.co";
+  const SUPABASE_ANON_KEY = "REPLACE_WITH_YOUR_EXISTING_SUPABASE_ANON_KEY";
+
+  const $ = id => document.getElementById(id);
+  const state = { groups: [], students: [], todayAttendance: [], reports: [] };
+
+  async function sb(path, options = {}) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...options,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+    const text = await res.text();
+    let data;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    if (!res.ok) {
+      const e = new Error(data?.message || data?.hint || `Supabase ${res.status}`);
+      e.details = data;
+      throw e;
+    }
+    return data;
+  }
+
+  function todayISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function currentMonth() { return todayISO().slice(0,7); }
+
+  function esc(v) {
+    return String(v ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  function msg(el, text, type="") {
+    el.innerHTML = text ? `<div class="notice ${type}">${esc(text)}</div>` : "";
+  }
+
+  function groupName(id) {
+    return state.groups.find(g => g.id === id)?.name || "—";
+  }
+
+  function statusPill(status) {
+    const label = {sent:"تم الإرسال",failed:"فشل",pending:"قيد الإرسال",skipped:"تم التخطي"}[status] || status || "—";
+    return `<span class="pill ${esc(status)}">${esc(label)}</span>`;
+  }
+
+  function normalizePhone(v) {
+    return String(v||'').replace(/\s|-/g,'').replace(/^0020/,'+20').replace(/^20(?=1\d{9}$)/,'+20').replace(/^0(?=1\d{9}$)/,'+20');
+  }
+
+  async function login() {
+    const raw = $("teacherPhone").value.trim();
+    if (!raw) return msg($("loginMsg"), "اكتب رقم هاتف المعلم.", "error");
+    const phone = normalizePhone(raw);
+    try {
+      const rows = await sb(`att_teachers?phone=eq.${encodeURIComponent(phone)}&active=eq.true&select=id,name,phone`);
+      if (!rows?.length) return msg($("loginMsg"), "هذا الرقم غير مسموح له بالدخول.", "error");
+      localStorage.setItem("attendance_teacher", JSON.stringify(rows[0]));
+      $("loginOverlay").style.display="none"; $("appShell").style.display="block";
+      await loadAll();
+    } catch(e) { msg($("loginMsg"), "تعذر تسجيل الدخول: " + e.message, "error"); }
+  }
+
+  // ===== Teacher login: phone + PIN =====
+  const TEACHER_PHONE = "+201000000000";
+  const TEACHER_PIN = "1234";
+  const AUTH_KEY = "attendance_teacher_authenticated";
+
+  function normalizePhone(v) { return String(v || "").replace(/[\s()-]/g, ""); }
+  function isAuthenticated() { return sessionStorage.getItem(AUTH_KEY) === "1"; }
+  function showApp() { $("loginOverlay").style.display = "none"; }
+  function showLogin() { $("loginOverlay").style.display = "flex"; }
+
+  function doLogin() {
+    const phone = normalizePhone($("loginPhone").value);
+    const pin = String($("loginPin").value || "").trim();
+    if (!phone || !pin) return msg($("loginMsg"), "اكتب رقم الهاتف ورمز PIN.", "error");
+    if (phone !== normalizePhone(TEACHER_PHONE) || pin !== TEACHER_PIN)
+      return msg($("loginMsg"), "رقم الهاتف أو رمز PIN غير صحيح.", "error");
+    sessionStorage.setItem(AUTH_KEY, "1");
+    showApp();
+    $("loginPhone").value = ""; $("loginPin").value = "";
+    loadAll().catch(e => console.error(e));
+  }
+
+  function doLogout() {
+    sessionStorage.removeItem(AUTH_KEY);
+    location.reload();
+  }
+
+  async function loadAll() {
+    state.groups = await sb("att_groups?select=id,name,created_at&order=name.asc");
+    state.students = await sb("att_students?select=id,group_id,number_in_group,name,parent_phone,created_at&order=group_id.asc,number_in_group.asc");
+    await loadToday();
+    state.reports = JSON.parse(localStorage.getItem("attendance_reports") || "[]");
+    renderAll();
+  }
+
+  async function loadToday() {
+    state.todayAttendance = await sb(
+      `att_attendance?date=eq.${todayISO()}&select=id,student_id,date,time,whatsapp_status&order=time.desc`
+    );
+  }
+
+  function fillGroupSelect(id, includeAll=true) {
+    const el = $(id);
+    const first = includeAll ? '<option value="">كل المجموعات</option>' : '<option value="">اختر المجموعة</option>';
+    el.innerHTML = first + state.groups.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
+  }
+
+  function renderAll() {
+    ["studentGroup","attendanceGroup","historyGroup"].forEach(id => fillGroupSelect(id, false));
+    fillGroupSelect("studentFilter", true);
+    renderGroups(); renderStudents(); renderToday(); renderReports();
+    $("todayLabel").textContent = todayISO();
+    $("reportMonth").value = $("reportMonth").value || currentMonth();
+    updateSelectedGroupCount();
+  }
+
+  function renderGroups() {
+    const el = $("groupsTable");
+    if (!state.groups.length) { el.innerHTML = '<div class="empty">لا توجد مجموعات بعد.</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>المجموعة</th><th>عدد الطلاب</th><th></th></tr></thead><tbody>${
+      state.groups.map(g => {
+        const count = state.students.filter(s => s.group_id === g.id).length;
+        return `<tr><td>${esc(g.name)}</td><td>${count}</td><td><button class="btn danger" onclick="deleteGroup('${esc(g.id)}')">حذف</button></td></tr>`;
+      }).join("")
+    }</tbody></table>`;
+  }
+
+  function renderStudents() {
+    const filter = $("studentFilter").value;
+    const list = state.students.filter(s => !filter || s.group_id === filter);
+    const el = $("studentsTable");
+    if (!list.length) { el.innerHTML = '<div class="empty">لا يوجد طلاب مطابقون.</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>المجموعة</th><th>الرقم</th><th>الاسم</th><th>ولي الأمر</th><th></th></tr></thead><tbody>${
+      list.map(s => `<tr>
+        <td>${esc(groupName(s.group_id))}</td><td>${esc(s.number_in_group)}</td><td>${esc(s.name)}</td>
+        <td>${esc(s.parent_phone || "—")}</td>
+        <td><button class="btn danger" onclick="deleteStudent('${esc(s.id)}')">حذف</button></td>
+      </tr>`).join("")
+    }</tbody></table>`;
+  }
+
+  function renderToday() {
+    $("todayCount").textContent = state.todayAttendance.length;
+    const groupId = $("attendanceGroup").value;
+    $("selectedGroupCount").textContent = state.todayAttendance.filter(a => {
+      const s = state.students.find(x => x.id === a.student_id);
+      return !groupId || s?.group_id === groupId;
+    }).length;
+    const list = state.todayAttendance.map(a => ({a,s:state.students.find(s=>s.id===a.student_id)}))
+      .filter(x=>x.s && (!groupId || x.s.group_id===groupId));
+    $("todayTable").innerHTML = list.length ? `<table><thead><tr><th>الوقت</th><th>المجموعة</th><th>الرقم</th><th>الطالب</th><th>إرسال لولي الأمر</th></tr></thead><tbody>${
+      list.map(x=>`<tr><td>${esc(x.a.time)}</td><td>${esc(groupName(x.s.group_id))}</td><td>${esc(x.s.number_in_group)}</td><td>${esc(x.s.name)}</td><td>${x.s.parent_phone?`<button class="btn secondary" onclick="openWhatsApp('${esc(x.s.id)}','${esc(x.a.id)}')">إرسال واتساب</button>`:'<span class="pill">لا يوجد رقم</span>'}</td></tr>`).join("")
+    }</tbody></table>` : '<div class="empty">لم يتم تسجيل حضور بعد.</div>';
+  }
+
+  function renderReports() {
+    const el = $("reportsTable");
+    if (!state.reports.length) { el.innerHTML = '<div class="empty">لم يتم توليد تقارير في هذا الجهاز بعد.</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>الشهر</th><th>السجلات</th><th>الملف</th></tr></thead><tbody>${
+      state.reports.map(r => `<tr><td>${esc(r.month)}</td><td>${esc(r.rowCount)}</td><td><a class="download" href="${esc(r.url)}" download="attendance-${esc(r.month)}.csv">تحميل CSV</a></td></tr>`).join("")
+    }</tbody></table>`;
+  }
+
+  async function addGroup() {
+    const name = $("groupName").value.trim();
+    if (!name) return msg($("groupMsg"), "اكتب اسم المجموعة أولاً.", "error");
+    try {
+      await sb("att_groups", {method:"POST", headers:{Prefer:"return=minimal"}, body:JSON.stringify({name})});
+      $("groupName").value = "";
+      msg($("groupMsg"), "تمت إضافة المجموعة.", "ok");
+      await loadAll();
+    } catch(e) { msg($("groupMsg"), e.message, "error"); }
+  }
+
+  window.deleteGroup = async function(id) {
+    const count = state.students.filter(s=>s.group_id===id).length;
+    if (!confirm(`حذف المجموعة؟ ${count ? "سيتم رفض الحذف غالبًا إذا كان بها طلاب." : ""}`)) return;
+    try {
+      await sb(`att_groups?id=eq.${encodeURIComponent(id)}`, {method:"DELETE"});
+      await loadAll();
+    } catch(e) { alert("تعذر حذف المجموعة: " + e.message); }
+  };
+
+  async function addStudent() {
+    const group_id = $("studentGroup").value;
+    const number_in_group = Number($("studentNumber").value);
+    const name = $("studentName").value.trim();
+    const parent_phone = $("parentPhone").value.trim();
+    if (!group_id || !number_in_group || !name) return msg($("studentMsg"), "املأ المجموعة والرقم والاسم.", "error");
+    try {
+      await sb("att_students", {
+        method:"POST", headers:{Prefer:"return=minimal"},
+        body:JSON.stringify({group_id,number_in_group,name,parent_phone:parent_phone||null})
+      });
+      $("studentNumber").value=""; $("studentName").value=""; $("parentPhone").value="";
+      msg($("studentMsg"), "تمت إضافة الطالب.", "ok");
+      await loadAll();
+    } catch(e) { msg($("studentMsg"), "تعذر إضافة الطالب. تأكد أن الرقم غير مكرر داخل نفس المجموعة.", "error"); }
+  }
+
+  window.deleteStudent = async function(id) {
+    if (!confirm("حذف الطالب؟")) return;
+    try {
+      await sb(`att_students?id=eq.${encodeURIComponent(id)}`, {method:"DELETE"});
+      await loadAll();
+    } catch(e) { alert("تعذر حذف الطالب: " + e.message); }
+  };
+
+  async function registerAttendance() {
+    const groupId = $("attendanceGroup").value;
+    const number = Number($("attendanceNumber").value);
+    if (!groupId || !number) return msg($("attendanceMsg"), "اختر المجموعة واكتب رقم الطالب.", "error");
+    const student = state.students.find(s => s.group_id === groupId && Number(s.number_in_group) === number);
+    if (!student) {
+      $("attendanceNumber").select();
+      return msg($("attendanceMsg"), "لا يوجد طالب بهذا الرقم داخل المجموعة المختارة.", "error");
+    }
+
+    const existing = state.todayAttendance.find(a => a.student_id === student.id);
+    if (existing) {
+      $("attendanceNumber").select();
+      return msg($("attendanceMsg"), `تم تسجيل حضور ${student.name} بالفعل اليوم.`, "");
+    }
+
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-GB", {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    try {
+      const inserted = await sb("att_attendance", {
+        method:"POST",
+        headers:{Prefer:"return=representation"},
+        body:JSON.stringify({student_id:student.id,date:todayISO(),time,whatsapp_status:"skipped"})
+      });
+      const attendance = inserted?.[0];
+      if (!attendance) throw new Error("لم يتم إنشاء سجل الحضور.");
+      $("attendanceNumber").value = "";
+      msg($("attendanceMsg"), `تم تسجيل حضور ${student.name}. جاري إرسال واتساب...`, "ok");
+      await loadToday(); renderToday();
+
+      // الإرسال يدوي: يظهر زر واتساب بجانب الطالب بعد تسجيل الحضور.
+      $("attendanceNumber").focus();
+
+    } catch(e) {
+      msg($("attendanceMsg"), e.message.includes("duplicate") ? "الحضور مسجل بالفعل لهذا الطالب اليوم." : "تعذر تسجيل الحضور.", "error");
+    }
+  }
+
+  window.sendWhatsApp = function(studentId, attendanceId) {
+    const student = state.students.find(s => s.id === studentId);
+    const attendance = state.todayAttendance.find(a => a.id === attendanceId);
+    if (!student?.parent_phone) return alert("لا يوجد رقم لولي الأمر.");
+    let phone = String(student.parent_phone).replace(/\D/g, '');
+    if (phone.startsWith('0')) phone = '20' + phone.slice(1);
+    if (!phone.startsWith('20') && phone.length <= 11) phone = '20' + phone;
+    const date = attendance?.date || todayISO();
+    const time = attendance?.time || '';
+    const text = `تم تسجيل حضور ابنكم/ابنتكم ${student.name} في حصة الدراسات بتاريخ ${date} الساعة ${time}.`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  };
+
+  window.openWhatsApp = function(studentId, attendanceId) {
+    const student = state.students.find(s => s.id === studentId);
+    const attendance = state.todayAttendance.find(a => a.id === attendanceId);
+    if (!student || !student.parent_phone || !attendance) return;
+    const digits = normalizePhone(student.parent_phone).replace(/^\+/, "").replace(/\D/g, "");
+    if (!digits) return alert("رقم ولي الأمر غير صالح.");
+    const message = `السلام عليكم، تم تسجيل حضور ابنكم/ابنتكم ${student.name} في حصة الدراسات بتاريخ ${attendance.date} الساعة ${attendance.time}.`;
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+  };
+
+  async function loadHistory() {
+    const groupId = $("historyGroup").value;
+    const date = $("historyDate").value || todayISO();
+    let url = `att_attendance?date=eq.${date}&select=id,student_id,date,time,whatsapp_status&order=time.asc`;
+    const rows = await sb(url);
+    const list = rows.map(a => ({a,s:state.students.find(s=>s.id===a.student_id)}))
+      .filter(x=>x.s && (!groupId || x.s.group_id===groupId));
+    $("historyTable").innerHTML = list.length ? `<table><thead><tr><th>الوقت</th><th>المجموعة</th><th>الرقم</th><th>الاسم</th><th>واتساب</th></tr></thead><tbody>${
+      list.map(x=>`<tr><td>${esc(x.a.time)}</td><td>${esc(groupName(x.s.group_id))}</td><td>${esc(x.s.number_in_group)}</td><td>${esc(x.s.name)}</td><td>${statusPill(x.a.whatsapp_status)}</td></tr>`).join("")
+    }</tbody></table>` : '<div class="empty">لا توجد سجلات في هذا اليوم.</div>';
+  }
+
+  async function generateReport() {
+    const month = $("reportMonth").value || currentMonth();
+    try {
+      const start = `${month}-01`;
+      const [y,m] = month.split('-').map(Number);
+      const end = new Date(y, m, 1).toISOString().slice(0,10);
+      const rows = await sb(`att_attendance?date=gte.${start}&date=lt.${end}&select=id,student_id,date,time,whatsapp_status&order=date.asc,time.asc`);
+      const header = ['التاريخ','الوقت','المجموعة','رقم الطالب','اسم الطالب','رقم ولي الأمر'];
+      const csvRows = rows.map(a => {
+        const st = state.students.find(s=>s.id===a.student_id) || {};
+        return [a.date,a.time,groupName(st.group_id),st.number_in_group||'',st.name||'',st.parent_phone||''];
+      });
+      const csv = '\uFEFF' + [header,...csvRows].map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\r\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const item = {month,rowCount:rows.length,url};
+      state.reports = [item, ...state.reports.filter(x=>x.month!==month)];
+      localStorage.setItem('attendance_reports', JSON.stringify(state.reports.map(({month,rowCount})=>({month,rowCount}))));
+      $("reportMsg").innerHTML = `<div class="notice ok">تم توليد التقرير بعدد ${rows.length} سجل. <a class="download" href="${url}" download="attendance-${month}.csv">تحميل التقرير</a></div>`;
+      renderReports();
+    } catch(e) { msg($("reportMsg"), e.message, "error"); }
+  }
+
+  $("tabs").addEventListener("click", e => {
+    const b = e.target.closest("button[data-tab]");
+    if (!b) return;
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    document.querySelectorAll("main section").forEach(x=>x.classList.remove("active"));
+    $(b.dataset.tab).classList.add("active");
+    if (b.dataset.tab === "attendance") $("attendanceNumber").focus();
+  });
+
+  $("addGroupBtn").onclick = addGroup;
+  $("addStudentBtn").onclick = addStudent;
+  $("studentFilter").onchange = renderStudents;
+  $("attendanceGroup").onchange = renderToday;
+  $("attendanceNumber").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); registerAttendance(); } };
+  $("loadHistoryBtn").onclick = () => loadHistory().catch(e => msg($("historyTable"), e.message, "error"));
+  $("generateReportBtn").onclick = generateReport;
+
+  $("historyDate").value = todayISO();
+  $("reportMonth").value = currentMonth();
+
+  $("loginBtn").onclick = login;
+  $("teacherPhone").onkeydown = e => { if(e.key === "Enter") login(); };
+  const savedTeacher = localStorage.getItem("attendance_teacher");
+  if (savedTeacher && !SUPABASE_ANON_KEY.startsWith("REPLACE_")) {
+    $("loginOverlay").style.display="none"; $("appShell").style.display="block";
+    loadAll().catch(e => console.error(e));
+  } else if (SUPABASE_ANON_KEY.startsWith("REPLACE_")) {
+    msg($("loginMsg"), "ضع مفتاح Supabase anon العام داخل index.html أولاً.", "error");
+  }
+
+  $("loginBtn").onclick = doLogin;
+  $("logoutBtn").onclick = doLogout;
+  $("loginPin").onkeydown = e => { if (e.key === "Enter") doLogin(); };
+  $("loginPhone").onkeydown = e => { if (e.key === "Enter") $("loginPin").focus(); };
+
+  if (isAuthenticated()) {
+    showApp();
+
+  $("loginBtn").onclick=doLogin;
+  $("logoutBtn").onclick=doLogout;
+  $("loginPin").onkeydown=e=>{if(e.key==="Enter")doLogin();};
+  $("loginPhone").onkeydown=e=>{if(e.key==="Enter")$("loginPin").focus();};
+  if(isAuthenticated()){
+    showApp();
+    if(SUPABASE_ANON_KEY.startsWith("REPLACE_")){
+      document.querySelector("main").insertAdjacentHTML("afterbegin",'<div class="notice error">استبدل REPLACE_WITH_YOUR_EXISTING_SUPABASE_ANON_KEY بمفتاح anon العام من Supabase داخل public/index.html.</div>');
+    }
+    loadAll().catch(console.error);
+  }else showLogin();
+</script>
+</body>
+</html>
